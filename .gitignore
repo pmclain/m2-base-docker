@@ -1,0 +1,4 @@
+/.idea
+/dev/composer.env
+/src/*
+!/src/.gitkeep

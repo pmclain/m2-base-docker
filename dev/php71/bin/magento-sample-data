@@ -1,0 +1,6 @@
+#!/bin/bash
+
+MAGENTO_COMMAND="php $MAGENTO_ROOT/bin/magento"
+SAMPLE_DATA_COMMAND="setup:performance:generate-fixtures $MAGENTO_ROOT/setup/performance-toolkit/profiles/ce/small.xml"
+
+$MAGENTO_COMMAND $SAMPLE_DATA_COMMAND

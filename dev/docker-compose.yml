@@ -1,0 +1,118 @@
+version: "3"
+services:
+  web:
+    build: ./web
+    ports:
+      - "80:80"
+      - "443:443"
+    links:
+      - varnish
+    networks:
+      default:
+        aliases:
+          - magento.docker
+    environment:
+      - VIRTUAL_HOST=magento.docker
+
+  varnish:
+    build: ./varnish
+    ports:
+      - "6081:80"
+    links:
+      - nginx
+
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:8080"
+    links:
+      - app
+    volumes:
+      - ../src:/var/www/html:cached
+    environment:
+      - VIRTUAL_HOST=magento.docker
+
+  app:
+    build: ./php73
+    links:
+      - db
+      - redis
+      - amqp
+      - mailcatcher
+      - elasticsearch
+    volumes:
+      - ~/.composer/cache:/root/.composer/cache
+      - ../src:/var/www/html:cached
+    env_file:
+      - ./composer.env
+    environment:
+      - PHP_IDE_CONFIG=serverName=magento.docker
+      - XDEBUG_ENABLE=true
+      - MAGENTO_RUN_MODE=developer
+      - MAGENTO_URL=https://magento.docker
+      - BLACKFIRE_CLIENT_ID={{blakcfireClientId}}
+      - BLACKFIRE_CLIENT_TOKEN={{blakcfireClientToken}}
+
+  blackfire:
+    image: blackfire/blackfire
+    ports:
+      - 8707
+    environment:
+      - BLACKFIRE_CLIENT_ID={{blakcfireClientId}}
+      - BLACKFIRE_CLIENT_TOKEN={{blakcfireClientToken}}
+      - BLACKFIRE_SERVER_ID={{blakcfireServerId}}
+      - BLACKFIRE_SERVER_TOKEN={{blakcfireServerToken}}
+  
+  db:
+    image: mariadb:10
+    user: mysql
+    ports:
+      - "9306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=magento
+      - MYSQL_DATABASE=magento
+      - MYSQL_USER=magento
+      - MYSQL_PASSWORD=magento
+  
+  redis:
+    image: redis
+    ports:
+      - 6379
+  
+  amqp:
+    image: rabbitmq:management
+    ports:
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASSWORD=guest
+
+  elasticsearch:
+    image: elasticsearch:5.2
+    user: elasticsearch
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+
+  mailcatcher:
+    image: helder/mailcatcher
+    ports:
+      - "1080:80"
+
+volumes:
+  dbdata:
+  esdata:
+
+networks:
+  default:
